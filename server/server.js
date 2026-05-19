@@ -1,9 +1,18 @@
+
+
+require("dotenv").config(); 
+
+const express = require("express");
+const cors = require("cors");
 const { connectDB, sequelize } = require("./config/db");
-require("./models/Item");
+const Item = require("./models/Items");
+const authRoutes = require("./routes/authRoutes");
 
-connectDB().then(() => sequelize.sync());
+const app = express(); 
 
-const Item = require("./models/Item");
+app.use(cors());
+app.use(express.json());
+
 
 app.get("/api/items", async (req, res) => {
   try {
@@ -13,4 +22,16 @@ app.get("/api/items", async (req, res) => {
     console.error("Error fetching items:", error);
     res.status(500).json({ message: "Error fetching items" });
   }
+});
+
+app.use("/api/auth", authRoutes);
+
+
+const PORT = process.env.PORT || 3001;
+
+connectDB().then(() => {
+  sequelize.sync({ alter: true });
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
 });
