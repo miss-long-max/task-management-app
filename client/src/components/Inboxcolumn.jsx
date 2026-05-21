@@ -1,12 +1,5 @@
 // InboxColumn.jsx
-// A persistent "Inbox" column for capturing new cards quickly.
-// Props:
-//   cards: [{ id, title, description }]
-//   onAddCard(cardData) — adds card to inbox
-//   onDeleteCard(cardId) — deletes from inbox
-//   onDragOver, onDrop — for receiving dragged cards from other columns
-
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 
 export default function InboxColumn({
   cards = [],
@@ -17,37 +10,24 @@ export default function InboxColumn({
 }) {
   const [isAdding, setIsAdding] = useState(false);
   const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
   const [isDragOver, setIsDragOver] = useState(false);
-  const inputRef = useRef(null);
 
-  useEffect(() => {
-    if (isAdding && inputRef.current) {
-      inputRef.current.focus();
-    }
-  }, [isAdding]);
-
-  const handleSubmit = () => {
+  const handleAdd = () => {
     if (!title.trim()) return;
     onAddCard({
       id: `card-${Date.now()}`,
       title: title.trim(),
-      description: description.trim(),
+      description: "",
     });
     setTitle("");
-    setDescription("");
     setIsAdding(false);
   };
 
   const handleKeyDown = (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSubmit();
-    }
+    if (e.key === "Enter") handleAdd();
     if (e.key === "Escape") {
       setIsAdding(false);
       setTitle("");
-      setDescription("");
     }
   };
 
@@ -55,7 +35,7 @@ export default function InboxColumn({
     <div
       style={{
         ...styles.inbox,
-        outline: isDragOver ? "2px dashed #f1c40f" : "2px solid transparent",
+        border: isDragOver ? "2px dashed #e74c3c" : "2px solid transparent",
       }}
       onDragOver={(e) => {
         e.preventDefault();
@@ -70,55 +50,40 @@ export default function InboxColumn({
     >
       {/* Header */}
       <div style={styles.header}>
-        <div style={styles.headerTop}>
-          <span style={styles.inboxIcon}>📥</span>
-          <h3 style={styles.title}>Inbox</h3>
-          <span style={styles.badge}>{cards.length}</span>
-        </div>
-        <div style={styles.accentLine} />
-        <p style={styles.subtitle}>Capture anything. Sort it later.</p>
+        <span style={styles.title}>📥 Inbox</span>
+        <span style={styles.count}>{cards.length}</span>
       </div>
 
-      {/* Quick-add form — always visible at top */}
-      <div style={styles.quickAdd}>
+      {/* Add card area */}
+      <div style={styles.addArea}>
         {isAdding ? (
-          <>
+          <div style={styles.addForm}>
             <input
-              ref={inputRef}
+              autoFocus
+              placeholder="What needs to be done?"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="What's on your mind?"
               style={styles.input}
             />
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Add details… (optional)"
-              rows={2}
-              style={{ ...styles.input, resize: "none", marginTop: 6 }}
-            />
-            <div style={styles.formActions}>
-              <button onClick={handleSubmit} style={styles.addBtn}>
-                ✓ Add to Inbox
+            <div style={styles.addFormActions}>
+              <button onClick={handleAdd} style={styles.addBtn}>
+                Add
               </button>
               <button
                 onClick={() => {
                   setIsAdding(false);
                   setTitle("");
-                  setDescription("");
                 }}
                 style={styles.cancelBtn}
               >
-                Discard
+                Cancel
               </button>
             </div>
-          </>
+          </div>
         ) : (
           <button onClick={() => setIsAdding(true)} style={styles.captureBtn}>
-            <span style={styles.capturePlus}>+</span>
-            <span>Capture a task…</span>
+            + Capture a task
           </button>
         )}
       </div>
@@ -126,264 +91,144 @@ export default function InboxColumn({
       {/* Card list */}
       <div style={styles.cardList}>
         {cards.length === 0 && !isAdding && (
-          <div style={styles.emptyState}>
-            <span style={{ fontSize: 28 }}>🗂</span>
-            <p style={styles.emptyText}>Your inbox is empty.</p>
-            <p style={styles.emptySubtext}>
-              Add something above or drag a card here.
-            </p>
-          </div>
+          <p style={styles.emptyText}>No items yet. Add something above.</p>
         )}
         {cards.map((card) => (
-          <InboxCard
-            key={card.id}
-            card={card}
-            onDelete={() => onDeleteCard(card.id)}
-          />
+          <div key={card.id} style={styles.card}>
+            <span style={styles.cardTitle}>{card.title}</span>
+            <button
+              onClick={() => onDeleteCard(card.id)}
+              style={styles.deleteBtn}
+            >
+              ×
+            </button>
+          </div>
         ))}
       </div>
     </div>
   );
 }
 
-// ─── Sub-component: InboxCard ─────────────────────────────────────────────────
-
-function InboxCard({ card, onDelete }) {
-  const [hovered, setHovered] = useState(false);
-
-  return (
-    <div
-      draggable
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={{
-        ...styles.card,
-        boxShadow: hovered
-          ? "0 6px 20px rgba(0,0,0,0.4)"
-          : "0 2px 8px rgba(0,0,0,0.2)",
-        transform: hovered ? "translateY(-2px)" : "translateY(0)",
-      }}
-    >
-      <div style={styles.cardContent}>
-        <span style={styles.cardDot} />
-        <div style={styles.cardBody}>
-          <p style={styles.cardTitle}>{card.title}</p>
-          {card.description && (
-            <p style={styles.cardDesc}>{card.description}</p>
-          )}
-        </div>
-      </div>
-      <button
-        onClick={onDelete}
-        title="Remove"
-        style={{ ...styles.deleteBtn, opacity: hovered ? 1 : 0 }}
-      >
-        ×
-      </button>
-    </div>
-  );
-}
-
-// ─── Styles ───────────────────────────────────────────────────────────────────
-
 const styles = {
   inbox: {
-    width: 290,
-    minWidth: 290,
-    background: "#12122a",
-    borderRadius: 12,
+    width: 260,
+    minWidth: 260,
+    background: "#ffffff",
+    borderRadius: 8,
+    flexShrink: 0,
     display: "flex",
     flexDirection: "column",
-    border: "1px solid rgba(241,196,15,0.2)",
-    flexShrink: 0,
-    transition: "outline 0.15s ease",
+    boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
   },
   header: {
-    padding: "16px 16px 0",
-    background: "linear-gradient(135deg, #1a1a3a 0%, #12122a 100%)",
-    borderRadius: "12px 12px 0 0",
-  },
-  headerTop: {
+    padding: "12px 16px",
+    borderBottom: "1px solid #eee",
     display: "flex",
+    justifyContent: "space-between",
     alignItems: "center",
-    gap: 8,
   },
-  inboxIcon: { fontSize: 18 },
   title: {
-    margin: 0,
-    flex: 1,
-    fontFamily: "'Bebas Neue', Impact, sans-serif",
-    fontSize: 22,
-    letterSpacing: 2,
-    color: "#f1c40f",
-    textTransform: "uppercase",
+    fontWeight: "bold",
+    fontSize: 14,
+    color: "#333",
   },
-  badge: {
-    background: "rgba(241,196,15,0.15)",
-    color: "#f1c40f",
+  count: {
+    background: "#f0f2f5",
     borderRadius: 12,
-    padding: "2px 9px",
+    padding: "2px 8px",
     fontSize: 12,
-    fontWeight: 700,
-    fontFamily: "monospace",
+    color: "#888",
   },
-  accentLine: {
-    height: 2,
-    background: "linear-gradient(90deg, #f1c40f, transparent)",
-    marginTop: 10,
-    borderRadius: 2,
+  addArea: {
+    padding: 12,
+    borderBottom: "1px solid #eee",
   },
-  subtitle: {
-    margin: "8px 0 14px",
-    color: "#6a6a8a",
-    fontSize: 11,
-    fontFamily: "'Georgia', serif",
-    fontStyle: "italic",
-    letterSpacing: 0.5,
-  },
-  quickAdd: {
-    padding: "0 12px 12px",
-    borderBottom: "1px solid rgba(255,255,255,0.06)",
-  },
-  captureBtn: {
-    width: "100%",
-    background: "rgba(241,196,15,0.07)",
-    border: "1px dashed rgba(241,196,15,0.3)",
-    borderRadius: 8,
-    color: "#9a9a70",
-    padding: "10px 14px",
+  addForm: {
     display: "flex",
-    alignItems: "center",
-    gap: 10,
-    fontSize: 13,
-    cursor: "pointer",
-    fontFamily: "'Georgia', serif",
-    fontStyle: "italic",
-    transition: "background 0.15s ease",
-  },
-  capturePlus: {
-    fontSize: 20,
-    color: "#f1c40f",
-    lineHeight: 1,
+    flexDirection: "column",
+    gap: 8,
   },
   input: {
-    width: "100%",
-    background: "#0d0d1a",
-    border: "1px solid rgba(241,196,15,0.25)",
-    borderRadius: 6,
-    color: "#eae0d5",
     padding: "8px 10px",
+    border: "1px solid #ddd",
+    borderRadius: 6,
     fontSize: 13,
-    fontFamily: "'Georgia', serif",
     outline: "none",
+    width: "100%",
     boxSizing: "border-box",
   },
-  formActions: {
+  addFormActions: {
     display: "flex",
     gap: 8,
-    marginTop: 10,
   },
   addBtn: {
-    background: "#f1c40f",
+    background: "#e74c3c",
+    color: "#fff",
     border: "none",
     borderRadius: 6,
-    color: "#0d0d1a",
-    padding: "7px 16px",
+    padding: "6px 14px",
     fontSize: 13,
-    fontWeight: 900,
+    fontWeight: "bold",
     cursor: "pointer",
-    fontFamily: "'Bebas Neue', sans-serif",
-    letterSpacing: 1,
   },
   cancelBtn: {
     background: "none",
     border: "none",
-    color: "#6a6a8a",
-    padding: "7px 10px",
-    fontSize: 12,
+    color: "#888",
+    fontSize: 13,
     cursor: "pointer",
-    fontFamily: "'Georgia', serif",
+  },
+  captureBtn: {
+    width: "100%",
+    background: "none",
+    border: "1px dashed #ddd",
+    borderRadius: 6,
+    color: "#888",
+    padding: "8px 12px",
+    fontSize: 13,
+    cursor: "pointer",
+    textAlign: "left",
   },
   cardList: {
-    padding: "10px 12px 12px",
+    padding: 12,
     display: "flex",
     flexDirection: "column",
     gap: 8,
     overflowY: "auto",
-    maxHeight: "calc(100vh - 280px)",
+    maxHeight: "calc(100vh - 240px)",
   },
   card: {
-    background: "#1e1e3a",
-    borderRadius: 8,
-    padding: "10px 10px 10px 14px",
-    borderLeft: "4px solid #f1c40f",
+    background: "#f9f9f9",
+    border: "1px solid #eee",
+    borderRadius: 6,
+    padding: "10px 12px",
     display: "flex",
+    justifyContent: "space-between",
     alignItems: "flex-start",
     gap: 8,
-    cursor: "grab",
-    transition: "box-shadow 0.2s ease, transform 0.2s ease",
   },
-  cardContent: {
-    display: "flex",
-    gap: 10,
-    flex: 1,
-    alignItems: "flex-start",
-  },
-  cardDot: {
-    width: 6,
-    height: 6,
-    borderRadius: "50%",
-    background: "#f1c40f",
-    flexShrink: 0,
-    marginTop: 5,
-  },
-  cardBody: { flex: 1 },
   cardTitle: {
-    margin: 0,
-    color: "#eae0d5",
     fontSize: 13,
-    fontWeight: 600,
-    fontFamily: "'Georgia', serif",
+    color: "#333",
+    flex: 1,
     lineHeight: 1.4,
-  },
-  cardDesc: {
-    margin: "4px 0 0",
-    color: "#6a6a8a",
-    fontSize: 11,
-    fontFamily: "'Georgia', serif",
-    lineHeight: 1.5,
   },
   deleteBtn: {
     background: "none",
     border: "none",
-    color: "#c0392b",
-    fontSize: 18,
-    lineHeight: 1,
+    color: "#aaa",
+    fontSize: 16,
     cursor: "pointer",
-    padding: "0 2px",
+    padding: 0,
+    lineHeight: 1,
     flexShrink: 0,
-    transition: "opacity 0.15s ease",
-  },
-  emptyState: {
-    textAlign: "center",
-    padding: "28px 16px",
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    gap: 6,
   },
   emptyText: {
-    margin: 0,
-    color: "#4a4a6a",
-    fontFamily: "'Georgia', serif",
-    fontSize: 14,
-    fontWeight: 600,
-  },
-  emptySubtext: {
-    margin: 0,
-    color: "#3a3a5a",
-    fontFamily: "'Georgia', serif",
-    fontStyle: "italic",
     fontSize: 12,
+    color: "#aaa",
+    fontStyle: "italic",
+    textAlign: "center",
+    margin: 0,
+    padding: "8px 0",
   },
 };

@@ -2,7 +2,7 @@
 import { useState, useRef } from "react";
 import Header from "../components/Header";
 import InboxColumn from "../components/InboxColumn";
-import KanbanColumn from "../components/KanbanColumn";
+import KanbanColumn from "../components/kanbancolumn";
 
 const INITIAL_COLUMNS = [
   { id: "col-1", title: "To Do", color: "blue", cards: [] },
@@ -11,7 +11,7 @@ const INITIAL_COLUMNS = [
   { id: "col-4", title: "Done", color: "green", cards: [] },
 ];
 
-export default function Board() {
+export default function Board({ onLogout }) {
   const [columns, setColumns] = useState(INITIAL_COLUMNS);
   const [inboxCards, setInboxCards] = useState([]);
   const dragColId = useRef(null);
@@ -67,10 +67,14 @@ export default function Board() {
         height: "100vh",
         display: "flex",
         flexDirection: "column",
-        background: "#0a0a1a",
+        background: "#f0f2f5",
       }}
     >
-      <Header boardTitle="Sprint 1" onAddColumn={addColumn} />
+      <Header
+        boardTitle="Sprint 1"
+        onAddColumn={addColumn}
+        onLogout={onLogout}
+      />
       <div
         style={{
           display: "flex",
