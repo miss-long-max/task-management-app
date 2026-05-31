@@ -1,13 +1,11 @@
-// KanbanColumn.jsx
 import { useState } from "react";
 
 export default function KanbanColumn({
   column,
-  onDragStart,
-  onDragOver,
-  onDrop,
   onAddCard,
   onDeleteCard,
+  onDragStart,
+  onCardDrop,
 }) {
   const [addingCard, setAddingCard] = useState(false);
   const [newTitle, setNewTitle] = useState("");
@@ -15,63 +13,52 @@ export default function KanbanColumn({
 
   const handleAdd = () => {
     if (!newTitle.trim()) return;
-    onAddCard(column.id, {
-      id: `card-${Date.now()}`,
-      title: newTitle.trim(),
-      description: "",
-    });
+    onAddCard(column.id, { id: `card-${Date.now()}`, title: newTitle.trim() });
     setNewTitle("");
     setAddingCard(false);
   };
 
-  const handleKeyDown = (e) => {
-    if (e.key === "Enter") handleAdd();
-    if (e.key === "Escape") {
-      setAddingCard(false);
-      setNewTitle("");
-    }
-  };
-
   return (
     <div
-      draggable
-      onDragStart={(e) => onDragStart(e, column.id)}
+      style={{
+        ...styles.column,
+        background: isDragOver ? "#fff5f5" : "#fff",
+        outline: isDragOver ? "2px dashed #e74c3c" : "2px solid transparent",
+      }}
+      onDragEnter={(e) => {
+        e.preventDefault();
+        setIsDragOver(true);
+      }}
       onDragOver={(e) => {
         e.preventDefault();
         setIsDragOver(true);
-        onDragOver(e, column.id);
       }}
-      onDragLeave={() => setIsDragOver(false)}
+      onDragLeave={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget)) setIsDragOver(false);
+      }}
       onDrop={(e) => {
+        e.preventDefault();
         setIsDragOver(false);
-        onDrop(e, column.id);
-      }}
-      style={{
-        ...styles.column,
-        border: isDragOver ? "2px dashed #e74c3c" : "2px solid transparent",
+        onCardDrop(column.id);
       }}
     >
-      {/* Column header */}
+      {/* Static title - nothing draggable */}
       <div style={styles.header}>
         <span style={styles.title}>{column.title}</span>
         <span style={styles.count}>{column.cards.length}</span>
       </div>
 
-      {/* Cards */}
       <div style={styles.cardList}>
         {column.cards.map((card) => (
-          <div key={card.id} style={styles.card}>
-            <span style={styles.cardTitle}>{card.title}</span>
-            <button
-              onClick={() => onDeleteCard(column.id, card.id)}
-              style={styles.deleteBtn}
-            >
-              ×
-            </button>
-          </div>
+          <Card
+            key={card.id}
+            card={card}
+            colId={column.id}
+            onDragStart={onDragStart}
+            onDelete={() => onDeleteCard(column.id, card.id)}
+          />
         ))}
 
-        {/* Add card */}
         {addingCard ? (
           <div style={styles.addForm}>
             <input
@@ -79,10 +66,16 @@ export default function KanbanColumn({
               placeholder="Card title"
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
-              onKeyDown={handleKeyDown}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleAdd();
+                if (e.key === "Escape") {
+                  setAddingCard(false);
+                  setNewTitle("");
+                }
+              }}
               style={styles.input}
             />
-            <div style={styles.addFormActions}>
+            <div style={{ display: "flex", gap: 8 }}>
               <button onClick={handleAdd} style={styles.addBtn}>
                 Add
               </button>
@@ -107,16 +100,48 @@ export default function KanbanColumn({
   );
 }
 
+function Card({ card, colId, onDragStart, onDelete }) {
+  const [dragging, setDragging] = useState(false);
+
+  return (
+    <div
+      draggable
+      onDragStart={(e) => {
+        e.stopPropagation();
+        setTimeout(() => setDragging(true), 0);
+        onDragStart(card.id, colId);
+      }}
+      onDragEnd={() => setDragging(false)}
+      style={{
+        ...styles.card,
+        opacity: dragging ? 0.3 : 1,
+        pointerEvents: dragging ? "none" : "auto",
+      }}
+    >
+      <span style={styles.cardTitle}>{card.title}</span>
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onDelete();
+        }}
+        style={styles.deleteBtn}
+      >
+        ×
+      </button>
+    </div>
+  );
+}
+
 const styles = {
   column: {
     width: 260,
     minWidth: 260,
-    background: "#ffffff",
     borderRadius: 8,
     flexShrink: 0,
     display: "flex",
     flexDirection: "column",
     boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+    transition: "background 0.15s ease",
   },
   header: {
     padding: "12px 16px",
@@ -124,12 +149,10 @@ const styles = {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
+    borderRadius: "8px 8px 0 0",
+    background: "#fff",
   },
-  title: {
-    fontWeight: "bold",
-    fontSize: 14,
-    color: "#333",
-  },
+  title: { fontWeight: "bold", fontSize: 14, color: "#333" },
   count: {
     background: "#f0f2f5",
     borderRadius: 12,
@@ -144,6 +167,7 @@ const styles = {
     gap: 8,
     overflowY: "auto",
     maxHeight: "calc(100vh - 200px)",
+    minHeight: 80,
   },
   card: {
     background: "#f9f9f9",
@@ -154,13 +178,10 @@ const styles = {
     justifyContent: "space-between",
     alignItems: "flex-start",
     gap: 8,
+    cursor: "grab",
+    userSelect: "none",
   },
-  cardTitle: {
-    fontSize: 13,
-    color: "#333",
-    flex: 1,
-    lineHeight: 1.4,
-  },
+  cardTitle: { fontSize: 13, color: "#333", flex: 1, lineHeight: 1.4 },
   deleteBtn: {
     background: "none",
     border: "none",
@@ -171,11 +192,7 @@ const styles = {
     lineHeight: 1,
     flexShrink: 0,
   },
-  addForm: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 8,
-  },
+  addForm: { display: "flex", flexDirection: "column", gap: 8 },
   input: {
     padding: "8px 10px",
     border: "1px solid #ddd",
@@ -184,10 +201,6 @@ const styles = {
     outline: "none",
     width: "100%",
     boxSizing: "border-box",
-  },
-  addFormActions: {
-    display: "flex",
-    gap: 8,
   },
   addBtn: {
     background: "#e74c3c",
